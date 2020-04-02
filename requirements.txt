@@ -1,0 +1,10 @@
+numpy>=1.12
+jax>=0.1.59
+jaxlib>=0.1.43
+matplotlib
+dataclasses
+msgpack
+pytest-xdist
+pytest-benchmark
+tensorflow>=2.1
+tensorflow-datasets
