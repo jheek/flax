@@ -59,6 +59,7 @@ jax.tree_util.register_pytree_node(
 
 def freeze(x: Dict[K, V]) -> FrozenDict[K, V]:
   """Freeze a nested dict."""
+  # TODO: Support sublists
   if not isinstance(x, dict):
     return x
   temp = {}
@@ -67,6 +68,7 @@ def freeze(x: Dict[K, V]) -> FrozenDict[K, V]:
   return FrozenDict(temp)
 
 
+# TODO: Support sublists
 def unfreeze(x: FrozenDict[K, V]) -> Dict[K, V]:
   if not isinstance(x, FrozenDict):
     return x
