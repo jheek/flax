@@ -352,10 +352,11 @@ def scan(
       if pv is not None:
         raise ValueError('broadcasted variable has a data dependency on the scan body.')
       out_flat.append(const)
-    broadcast_vars_xs = jax.tree_unflatten(out_tree(), out_flat)
 
     (carry_vars_xs, carry), (scan_vars_xs, ys) = lax.scan(
         body, carry0, xxs, length=length, reverse=reverse)
+    
+    broadcast_vars_xs = jax.tree_unflatten(out_tree(), out_flat)
         
     out_vars_xs = combine(carry_vars_xs, scan_vars_xs, broadcast_vars_xs)
     return (carry, ys), out_vars_xs
