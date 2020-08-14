@@ -365,6 +365,47 @@ def scan(
       inner, variable_in_groups, variable_out_groups, rng_groups)(scope)
 
 
+def custom_vjp(module_fn: Callable[..., Any], backward_fn: Callable[..., Any],
+               grad_kind: KindFilter='param',
+               nondiff_argnums=()):
+  def inner(scope_fn, repack_fn, variable_groups_xs, rng_groups_xs, *args):
+    assert len(variable_groups_xs) == 1, 'transform does not support multi-scope lifting.'
+    grad_variables, other_variables = variable_groups_xs[0]
+
+    def simple_scope_fn(grad_variables):
+      return scope_fn(((freeze(grad_variables), other_variables),), rng_groups_xs)
+
+    def f(grad_variables, *args):
+      scope = scope_fn(((grad_variables, other_variables),), rng_groups_xs)
+      y, _ = module_fn(scope, *args)
+      vars_out = repack_fn(scope)
+      return y, vars_out
+    f = jax.custom_vjp(f, nondiff_argnums=nondiff_argnums)
+
+    def f_fwd(grad_variables, *args):
+      scope = simple_scope_fn(grad_variables)
+      y, res = module_fn(scope, *args)
+      vars_out = repack_fn(scope)
+      return (y, vars_out), (res, grad_variables)
+
+    def f_bwd(*args):
+      nondiff_args = args[:-2]
+      res, g = args[-2:]
+      g_y, _ = g
+      user_res, grad_variables = res
+      return backward_fn(*nondiff_args, simple_scope_fn, grad_variables, user_res, g_y)
+
+    f.defvjp(f_fwd, f_bwd)
+
+    return f(grad_variables, *args)
+
+  variable_in_groups = (grad_kind, True,)
+  variable_out_groups = (grad_kind, True,)
+  rng_groups = (True,)
+  return pack(
+      inner, variable_in_groups, variable_out_groups, rng_groups)
+
+
 def remat(fn: Callable[..., Any],
           variables: KindFilter = True,
           rngs: KindFilter = True) -> Callable[..., Any]:
