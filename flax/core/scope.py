@@ -14,10 +14,11 @@
 
 """Flax functional core."""
 
+import contextlib
 import enum
 import functools
 import hashlib
-from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple, TypeVar, Union, Generic
+from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple, TypeVar, Union, Generic, ContextManager
 
 from . import tracers
 from .frozen_dict import freeze
@@ -94,7 +95,6 @@ class Variable(Generic[T]):
   def value(self, value: T):
     self.scope.put_variable(self.kind, self.name, value)
 
-import contextlib
 
 class Scope:
   """Scope."""
@@ -120,7 +120,7 @@ class Scope:
     self._invalid = False
 
   @property
-  def invalid(self):
+  def invalid(self) -> bool:
     return self._invalid
 
   def _check_valid(self):
@@ -128,7 +128,7 @@ class Scope:
       raise ValueError('This scope is no longer valid.')
 
   @contextlib.contextmanager
-  def temporary(self):
+  def temporary(self) -> ContextManager['Scope']:
     try:
       yield self
     finally:
@@ -144,14 +144,7 @@ class Scope:
   def _validate_trace_level(self):
     tracers.check_trace_level(self.trace_level)
 
-  def transformed(self, fn, kind):
-    variables = unfreeze(self.get_kind(kind))
-    variables = freeze(fn(variables))
-    scope = self.rewound(rewind_rngs=True)
-    scope._variables[kind] = variables
-    return scope
-
-  def rewound(self, rewind_rngs=False):
+  def rewound(self, rewind_rngs: bool = False) -> 'Scope':
     self._check_valid()
     scope = Scope(self._variables, self.rngs, self.name, self.parent)
     if not rewind_rngs:
@@ -171,7 +164,7 @@ class Scope:
         return name
       i += 1
 
-  def push(self, name: Optional[str] = None, prefix: str = '', reuse=False) -> 'Scope':
+  def push(self, name: Optional[str] = None, prefix: str = '', reuse: bool = False) -> 'Scope':
     self._check_valid()
     self._validate_trace_level()
     if name is None:
@@ -266,7 +259,7 @@ class Scope:
     for kind in kinds:
       self.get_kind(kind)
 
-def _unfreeze_variables(variables, mutable):
+def _unfreeze_variables(variables: Variables, mutable: KindFilter) -> Variables:
   new_variables = {}
   for key, value in variables.items():
     if in_kind_filter(mutable, key):
