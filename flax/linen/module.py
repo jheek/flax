@@ -52,9 +52,9 @@ def _check_omnistaging():
 def _indent(x: str, num_spaces: int):
   indent_str = ' ' * num_spaces
   lines = x.split('\n')
-  # skip last line because it is always empty and should not be indented.
-  assert lines[-1] == ''
-  return '\n'.join(indent_str + line for line in lines[:-1]) + '\n'
+  # empty lines are not indented
+  return '\n'.join(indent_str + line if line else line
+                   for line in lines[:-1]) + '\n'
 
 
 def _attr_repr(value: Any):
